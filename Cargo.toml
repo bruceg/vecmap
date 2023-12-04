@@ -1,0 +1,12 @@
+[package]
+name = "vecmap"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+
+[dev-dependencies]
+proptest = { version = "1.4.0", default_features = false, features = ["std"] }
+proptest-derive = "0.4.0"
