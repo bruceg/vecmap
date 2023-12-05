@@ -1,6 +1,6 @@
 use std::collections::{BTreeMap, HashMap};
 
-use vecmap::VecMap;
+use vecmap::NewMap;
 
 fn main() {
     // Run registered benchmarks.
@@ -58,7 +58,7 @@ impl Mapper for HashMap<Key, Value> {
     }
 }
 
-impl Mapper for VecMap<Key, Value> {
+impl Mapper for NewMap<Key, Value> {
     fn do_insert(&mut self, key: Key, value: Value) -> Option<Value> {
         self.insert(key, value)
     }
@@ -71,7 +71,7 @@ impl Mapper for VecMap<Key, Value> {
 }
 
 #[divan::bench(
-    types = [BTreeMap<Key, Value>, HashMap<Key, Value>, VecMap<Key, Value>],
+    types = [BTreeMap<Key, Value>, HashMap<Key, Value>, NewMap<Key, Value>],
     consts = [0, 8, 64, 1024],
 )]
 fn mapit<T: Mapper, const L: usize>(bencher: divan::Bencher) {

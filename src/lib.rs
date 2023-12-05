@@ -1,47 +1,43 @@
-use std::collections::BTreeMap;
-use std::fmt::Debug;
+mod keystore;
+mod map;
 
-#[derive(Clone, Debug, Default, Eq, Ord, PartialEq, PartialOrd)]
-pub struct VecMap<K: Ord, V>(BTreeMap<K, V>);
-
-impl<K: Ord, V> VecMap<K, V> {
-    pub fn get(&self, key: &K) -> Option<&V> {
-        self.0.get(key)
-    }
-
-    pub fn iter(&self) -> <&BTreeMap<K, V> as IntoIterator>::IntoIter {
-        self.0.iter()
-    }
-
-    pub fn insert(&mut self, key: K, value: V) -> Option<V> {
-        self.0.insert(key, value)
-    }
-
-    pub fn remove(&mut self, key: &K) -> Option<V> {
-        self.0.remove(key)
-    }
-}
-
-impl<K: Ord, V> IntoIterator for VecMap<K, V> {
-    type Item = (K, V);
-    type IntoIter = <BTreeMap<K, V> as IntoIterator>::IntoIter;
-    fn into_iter(self) -> Self::IntoIter {
-        self.0.into_iter()
-    }
-}
-
-impl<K: Ord, V> FromIterator<(K, V)> for VecMap<K, V> {
-    fn from_iter<I: IntoIterator<Item = (K, V)>>(iter: I) -> Self {
-        Self(BTreeMap::from_iter(iter))
-    }
-}
+pub use map::NewMap;
 
 #[cfg(test)]
 mod tests {
+    use std::collections::BTreeMap;
+    use std::fmt::Debug;
+    use std::hash::Hash;
+
     use proptest::prelude::*;
     use proptest_derive::Arbitrary;
 
     use super::*;
+
+    #[test]
+    fn basic() {
+        let mut map = NewMap::<u8, u64>::default();
+        assert_eq!(map.len(), 0);
+
+        assert_eq!(map.insert(0, 100), None);
+        assert_eq!(map.len(), 1);
+        assert_eq!(map.get(&0), Some(&100));
+
+        assert_eq!(map.insert(1, 101), None);
+        assert_eq!(map.len(), 2);
+        assert_eq!(map.get(&0), Some(&100));
+        assert_eq!(map.get(&1), Some(&101));
+
+        assert_eq!(map.insert(1, 102), Some(101));
+        assert_eq!(map.len(), 2);
+        assert_eq!(map.get(&0), Some(&100));
+        assert_eq!(map.get(&1), Some(&102));
+
+        assert_eq!(map.remove(&0), Some(100));
+        assert_eq!(map.len(), 1);
+        assert_eq!(map.get(&0), None);
+        assert_eq!(map.get(&1), Some(&102));
+    }
 
     #[derive(Arbitrary, Debug)]
     enum Action<K, V> {
@@ -50,20 +46,25 @@ mod tests {
         Remove(K),
     }
 
-    fn compare_map<K: Debug + Eq + Ord, V: Debug + Eq>(this: &BTreeMap<K, V>, that: &VecMap<K, V>) {
-        assert_eq!(
-            this.iter().collect::<Vec<_>>(),
-            that.iter().collect::<Vec<_>>()
-        );
+    fn compare_map<K, V>(this: &BTreeMap<K, V>, that: &NewMap<K, V>)
+    where
+        K: Clone + Debug + Eq + Hash + Ord + Send + Sync + 'static,
+        V: Debug + Eq + Ord,
+    {
+        let mut this: Vec<_> = this.iter().collect();
+        let mut that: Vec<_> = that.iter().collect();
+        this.sort();
+        that.sort();
+        assert_eq!(this, that);
     }
 
     fn run_tests<K, V>(start: Vec<(K, V)>, acts: &[Action<K, V>])
     where
-        K: Clone + Debug + Eq + Ord,
-        V: Clone + Debug + Eq,
+        K: Clone + Debug + Eq + Hash + Ord + Send + Sync + 'static,
+        V: Clone + Debug + Eq + Ord,
     {
         let mut baseline = BTreeMap::from_iter(start.clone());
-        let mut sut = VecMap::from_iter(start);
+        let mut sut = NewMap::from_iter(start);
 
         compare_map(&baseline, &sut);
 
