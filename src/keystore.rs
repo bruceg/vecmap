@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::hash::Hash;
 use std::iter;
 use std::marker::PhantomData;
@@ -72,11 +72,18 @@ impl<K: Eq + Hash> SharedKeys<K> {
     pub fn get_index(&self, key: &K) -> Option<usize> {
         self.0.indices.get(key).copied()
     }
-}
 
-impl<K: Eq + Hash> SharedKeys<K> {
     pub fn indices(&self) -> &HashMap<K, usize> {
         &self.0.indices
+    }
+
+    fn collect(&self, all_keys: &mut HashSet<Self>) {
+        if !all_keys.contains(self) {
+            all_keys.insert(self.clone());
+            for map in &self.0.inserts {
+                map.collect(all_keys);
+            }
+        }
     }
 }
 
@@ -104,6 +111,20 @@ impl<K: Eq + Hash> FromIterator<(K, usize)> for SharedKeys<K> {
     }
 }
 
+impl<K: Eq + Hash> Eq for SharedKeys<K> {}
+
+impl<K: Eq + Hash> PartialEq for SharedKeys<K> {
+    fn eq(&self, other: &Self) -> bool {
+        Arc::as_ptr(&self.0) == Arc::as_ptr(&other.0)
+    }
+}
+
+impl<K: Eq + Hash> Hash for SharedKeys<K> {
+    fn hash<H: std::hash::Hasher>(&self, hasher: &mut H) {
+        Arc::as_ptr(&self.0).hash(hasher);
+    }
+}
+
 ////////////////////////////////////////////////////////////////////////
 pub trait KeyStore<K: Eq + Hash> {
     fn get(keys: Vec<K>) -> SharedKeys<K>;
@@ -113,9 +134,40 @@ pub trait KeyStore<K: Eq + Hash> {
 #[derive(Debug)]
 pub struct StdKeyStore<K>(PhantomData<K>);
 
-impl<K: Eq + Hash + Send + Sync> StdKeyStore<K> {
+#[derive(Clone, Copy, Debug)]
+pub struct KeyStoreStats {
+    pub initial_entries: usize,
+    pub total_maps: usize,
+    pub total_inserts: usize,
+    pub total_refs: usize,
+}
+
+impl<K: Eq + Hash + Send + Sync + 'static> StdKeyStore<K> {
     pub fn get_map() -> &'static DashMap<Vec<K>, SharedKeys<K>> {
         generic_singleton::get_or_init!(DashMap::new)
+    }
+
+    pub fn stats() -> KeyStoreStats {
+        let map = Self::get_map();
+
+        let mut all_keys = HashSet::new();
+        for entry in map {
+            entry.collect(&mut all_keys);
+        }
+
+        let total_inserts = all_keys.iter().map(|entry| entry.0.inserts.len()).sum();
+
+        let total_refs = all_keys
+            .iter()
+            .map(|entry| Arc::strong_count(&entry.0) - 1)
+            .sum();
+
+        KeyStoreStats {
+            initial_entries: map.len(),
+            total_maps: all_keys.len(),
+            total_inserts,
+            total_refs,
+        }
     }
 }
 

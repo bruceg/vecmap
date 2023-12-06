@@ -8,7 +8,7 @@ use criterion::{
 };
 use fastrand::Rng;
 
-use vecmap::NewMap;
+use vecmap::{NewMap, StdKeyStore};
 
 const SIZES: [usize; 12] = [0, 1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024];
 const MAX_KEYS: usize = 8;
@@ -154,6 +154,7 @@ fn bench_maps(c: &mut Criterion) {
         run_map::<HashMap<Key, Value>>("HashMap", &mut group, size);
         run_map::<BTreeMap<Key, Value>>("BTreeMap", &mut group, size);
         run_map::<NewMap<Key, Value>>("NewMap", &mut group, size);
+        dbg!(StdKeyStore::<Key>::stats());
     }
 }
 

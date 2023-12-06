@@ -1,6 +1,7 @@
 mod keystore;
 mod map;
 
+pub use keystore::{KeyStore, StdKeyStore};
 pub use map::NewMap;
 
 #[cfg(test)]

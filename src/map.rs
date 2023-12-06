@@ -25,12 +25,6 @@ impl<K: Eq + Hash, V, S: KeyStore<K>> Default for NewMap<K, V, S> {
     }
 }
 
-impl<K: Eq + Hash, V, S: KeyStore<K>> NewMap<K, V, S> {
-    pub fn new() -> Self {
-        Self::default()
-    }
-}
-
 impl<K: Eq + Hash, V, S> NewMap<K, V, S> {
     pub fn len(&self) -> usize {
         self.count
@@ -38,6 +32,12 @@ impl<K: Eq + Hash, V, S> NewMap<K, V, S> {
 
     pub fn is_empty(&self) -> bool {
         self.count == 0
+    }
+}
+
+impl<K: Eq + Hash, V, S: KeyStore<K>> NewMap<K, V, S> {
+    pub fn new() -> Self {
+        Self::default()
     }
 }
 
