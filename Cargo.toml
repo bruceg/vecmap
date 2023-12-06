@@ -3,19 +3,23 @@ name = "vecmap"
 version = "0.1.0"
 edition = "2021"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[profile.bench]
+debug = true
+
+[profile.release]
+debug = true
 
 [dependencies]
 dashmap = { version = "5.5.3", default-features = false, features = [] }
+fastrand = "2"
 generic_singleton = "0.5.0"
 itertools = "0.12.0"
 
 [dev-dependencies]
-divan = "0.1.4"
-fastrand = "2"
+criterion = "0.5.1"
 proptest = { version = "1.4.0", default_features = false, features = ["std"] }
 proptest-derive = "0.4.0"
 
 [[bench]]
-name = "example"
+name = "criterion"
 harness = false
